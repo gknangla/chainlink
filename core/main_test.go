@@ -4,7 +4,8 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
+	"os"
 	"testing"
 
 	"gopkg.in/guregu/null.v4"
@@ -27,7 +28,7 @@ func runEx(args ...string) {
 	tc.Overrides.Dev = null.BoolFrom(false)
 	lggr := logger.TestLogger(t)
 	testClient := &cmd.Client{
-		Renderer:               cmd.RendererTable{Writer: ioutil.Discard},
+		Renderer:               cmd.RendererTable{Writer: io.Discard},
 		Config:                 tc,
 		Logger:                 lggr,
 		CloseLogger:            lggr.Sync,
@@ -165,9 +166,61 @@ func ExampleRun_config() {
 	//    setgasprice  Set the default gas price to use for outgoing transactions
 	//    loglevel     Set log level
 	//    logsql       Enable/disable sql statement logging
+	//    validate     Validate provided TOML config file
 	//
 	// OPTIONS:
 	//    --help, -h  show help
+}
+
+func ExampleRun_config_validate_without_file() {
+	runEx("config", "validate")
+	// Output:
+	// NAME:
+	//    core.test config validate - Validate provided TOML config file
+	//
+	// USAGE:
+	//    core.test config validate [command options] [arguments...]
+	//
+	// OPTIONS:
+	//    --file FILE, -f FILE  TOML config FILE name to validate
+}
+
+func ExampleRun_config_validate_invalid_file() {
+	runEx("config", "validate", "-f", "/does/not/exist")
+	// Output:
+	// Validation failed (open /does/not/exist: no such file or directory)
+}
+
+func ExampleRun_config_validate_invalid_toml_syntax() {
+	tmpFile, _ := os.CreateTemp("", "")
+	defer tmpFile.Close()
+	tmpFile.WriteString("{invalid syntax {")
+
+	runEx("config", "validate", "-f", tmpFile.Name())
+	// Output:
+	// Validation failed ((1, 1): parsing error: keys cannot contain { character)
+}
+
+func ExampleRun_config_validate_invalid_duplicate_field() {
+	tmpFile, _ := os.CreateTemp("", "")
+	defer tmpFile.Close()
+	tmpFile.WriteString("Dev = false\n")
+	tmpFile.WriteString("Dev = true\n")
+
+	runEx("config", "validate", "-f", tmpFile.Name())
+	// Output:
+	// Validation failed ((2, 1): The following key was defined twice: Dev)
+}
+
+// TODO: make it an actual valid minimal config (check for required fields)
+func ExampleRun_config_validate_valid_minimal_config() {
+	tmpFile, _ := os.CreateTemp("", "")
+	defer tmpFile.Close()
+	tmpFile.WriteString("Dev = false\n")
+
+	runEx("config", "validate", "-f", tmpFile.Name())
+	// Output:
+	// Validation succeeded!
 }
 
 func ExampleRun_jobs() {
