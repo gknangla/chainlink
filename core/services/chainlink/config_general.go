@@ -32,6 +32,9 @@ type generalConfig struct {
 	effectiveTOML string // with default values included
 	c             *Config
 
+	secretsInputTOML string
+	secrets          *Secrets
+
 	// state
 	appID     uuid.UUID
 	appIDOnce sync.Once
@@ -42,10 +45,9 @@ type generalConfig struct {
 	logMu           sync.RWMutex
 }
 
-// NewGeneralConfig returns a coreconfig.GeneralConfig derived from the tomlString.
-func NewGeneralConfig(tomlString string) (coreconfig.GeneralConfig, error) {
+func NewGeneralConfig(configToml string, secretsToml string) (coreconfig.GeneralConfig, error) {
 	var c Config
-	err := toml.Unmarshal([]byte(tomlString), &c)
+	err := toml.Unmarshal([]byte(configToml), &c)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +62,18 @@ func NewGeneralConfig(tomlString string) (coreconfig.GeneralConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &generalConfig{c: &c, inputTOML: input, effectiveTOML: effective}, nil
+
+	// Secrets config does not have default values
+	var s Secrets
+	err = toml.Unmarshal([]byte(secretsToml), &s)
+	if err != nil {
+		return nil, err
+	}
+	secretsInput, err := s.TOMLString()
+	if err != nil {
+		return nil, err
+	}
+	return &generalConfig{c: &c, inputTOML: input, effectiveTOML: effective, secrets: &s, secretsInputTOML: secretsInput}, nil
 }
 
 func (g *generalConfig) Validate() error {
@@ -233,10 +246,6 @@ func (g *generalConfig) DatabaseBackupMode() coreconfig.DatabaseBackupMode {
 
 func (g *generalConfig) DatabaseBackupOnVersionUpgrade() bool {
 	return *g.c.Database.Backup.OnVersionUpgrade
-}
-
-func (g *generalConfig) DatabaseBackupURL() *url.URL {
-	return (*url.URL)(g.c.Database.Backup.URL)
 }
 
 func (g *generalConfig) DatabaseListenerMaxReconnectDuration() time.Duration {

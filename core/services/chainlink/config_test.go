@@ -37,7 +37,10 @@ var (
 	fullTOML string
 	//go:embed testdata/config-multi-chain.toml
 	multiChainTOML string
-	multiChain     = Config{
+	//go:embed testdata/secrets-full.toml
+	secretsTOML string
+
+	multiChain = Config{
 		Core: config.Core{
 			RootDir: ptr("my/root/dir"),
 
@@ -210,7 +213,6 @@ func TestConfig_Marshal(t *testing.T) {
 			Frequency:        &hour,
 			Mode:             &legacy.DatabaseBackupModeFull,
 			OnVersionUpgrade: ptr(true),
-			URL:              mustURL("http://test.back.up/fake"),
 		},
 	}
 	full.TelemetryIngress = &config.TelemetryIngress{
@@ -545,7 +547,6 @@ Dir = 'test/backup/dir'
 Frequency = '1h0m0s'
 Mode = 'full'
 OnVersionUpgrade = true
-URL = 'http://test.back.up/fake'
 
 [Database.Listener]
 MaxReconnectDuration = '1m0s'
@@ -971,7 +972,7 @@ func TestNewGeneralConfig_Logger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lggr, observed := logger.TestLoggerObserved(t, zapcore.InfoLevel)
-			c, err := NewGeneralConfig(tt.inputConfig)
+			c, err := NewGeneralConfig(tt.inputConfig, secretsTOML)
 			require.NoError(t, err)
 			c.LogConfiguration(lggr.Info)
 			inputLogs := observed.FilterMessageSnippet(input).All()

@@ -50,9 +50,21 @@ type Core struct {
 
 type Secrets struct {
 	DatabaseURL       *models.URL
+	DatabaseBackupURL *models.URL
+
 	ExplorerAccessKey *string
 	ExplorerSecret    *string
-	//TODO https://app.shortcut.com/chainlinklabs/story/33624/add-secrets-toml
+
+	KeystorePassword *string
+	VRFPassword      *string
+}
+
+func (s *Secrets) String() string {
+	return "<hidden>"
+}
+
+func (s *Secrets) MarshalJSON() ([]byte, error) {
+	return []byte(`{}`), nil
 }
 
 type Feature struct {
@@ -92,7 +104,7 @@ type DatabaseBackup struct {
 	Frequency        *models.Duration
 	Mode             *config.DatabaseBackupMode
 	OnVersionUpgrade *bool
-	URL              *models.URL
+	// DatabaseBackupURL stored in Secrets
 }
 
 type TelemetryIngress struct {
