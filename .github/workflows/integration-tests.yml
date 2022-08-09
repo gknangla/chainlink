@@ -8,7 +8,13 @@ on:
       - "**/*go.mod"
       - ".github/workflows/integration-tests.yml"
 env:
-  solana_ref: develop # Note: this may not make sense to be develop and may need to be a more stable branch
+  solana_sha: ded1afff3ef6d3af40000576ddd731801b361b7c # Note: this may not make sense to be develop and may need to be a more stable branch
+
+# Only run 1 of this workflow at a time per PR
+concurrency:
+  group: integration-tests-chainlink-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-chainlink:
     environment: integration
@@ -21,7 +27,7 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # v2.4.1
       - name: Build Image
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/build-image@010068ddc7dd55cd4439159a485390aa651fdd39 # v2.0.3
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/build-image@de292d573eea2debf31c058a0a7c003fa5880af5 # v2.0.6
         with:
           cl_repo: smartcontractkit/chainlink
           cl_ref: ${{ github.sha }}
@@ -30,37 +36,38 @@ jobs:
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
 
-  eth-smoke-tests:
-    environment: integration
-    permissions:
-      checks: write
-      pull-requests: write
-      id-token: write
-      contents: read
-    name: ETH Smoke Tests
-    runs-on: ubuntu-latest
-    needs: [build-chainlink]
-    steps:
-      - name: Checkout the repo
-        uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # v2.4.1
-      - name: Run Tests
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@7d405e28e1419c0a48198793e6647005c409f4cf # v2.0.4
-        env:
-          CHAINLINK_COMMIT_SHA: ${{ github.sha }}
-          CHAINLINK_ENV_USER: ${{ github.actor }}
-          TEST_TRIGGERED_BY: core-CI
-          TEST_LOG_LEVEL: debug
-        with:
-          test_command_to_run: make test_smoke_simulated args="-nodes=30"
-          test_download_vendor_packages_command: make gomod
-          test_download_ginkgo_command: make test_install_ginkgo
-          cl_repo: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/chainlink
-          cl_image_tag: latest.${{ github.sha }}
-          artifacts_location: ./integration-tests/smoke/logs
-          publish_check_name: EVM Smoke Test Results
-          QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
-          QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
-          QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+  # eth-smoke-tests:
+  #   environment: integration
+  #   permissions:
+  #     checks: write
+  #     pull-requests: write
+  #     id-token: write
+  #     contents: read
+  #   name: ETH Smoke Tests
+  #   runs-on: ubuntu-latest
+  #   needs: [build-chainlink]
+  #   steps:
+  #     - name: Checkout the repo
+  #       uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # v2.4.1
+  #     - name: Run Tests
+  #       uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@e16dd0cdcd534a9ac0e49a9350a24ad4af177f7f # v2.0.6
+  #       env:
+  #         CHAINLINK_COMMIT_SHA: ${{ github.sha }}
+  #         CHAINLINK_ENV_USER: ${{ github.actor }}
+  #         TEST_TRIGGERED_BY: core-CI-eth
+  #         TEST_LOG_LEVEL: debug
+  #       with:
+  #         test_command_to_run: make test_smoke_simulated args="-nodes=30"
+  #         test_download_vendor_packages_command: make gomod
+  #         test_download_ginkgo_command: make test_install_ginkgo
+  #         cl_repo: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/chainlink
+  #         cl_image_tag: latest.${{ github.sha }}
+  #         artifacts_location: ./integration-tests/smoke/logs
+  #         publish_check_name: EVM Smoke Test Results
+  #         triggered_by: ${{ env.TEST_TRIGGERED_BY }}
+  #         QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+  #         QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+  #         QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
 
   ### Solana Section
 
@@ -99,6 +106,11 @@ jobs:
     name: Solana Smoke Tests
     runs-on: ubuntu-latest
     needs: [build-chainlink, solana-build-contracts]
+    env:
+      CHAINLINK_COMMIT_SHA: ${{ github.sha }}
+      CHAINLINK_ENV_USER: ${{ github.actor }}
+      TEST_TRIGGERED_BY: core-CI-solana
+      TEST_LOG_LEVEL: debug
     steps:
       - name: Checkout the repo
         uses: actions/checkout@f25a3a9f25bd5f4c5d77189cab02ff357b5aedeb # v2.4.1
@@ -106,7 +118,7 @@ jobs:
           repository: smartcontractkit/chainlink-solana
           ref: ${{ env.solana_sha }}
       - name: Run Tests
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@7d405e28e1419c0a48198793e6647005c409f4cf # v2.0.4
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@namespace_cleanup # v2.0.6
         with:
           test_command_to_run: make test_smoke
           cl_repo: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/chainlink
@@ -114,8 +126,14 @@ jobs:
           download_contract_artifacts_path: contracts/target/deploy
           artifacts_location: /home/runner/work/chainlink-solana/chainlink-solana/tests/e2e/logs
           publish_check_name: Solana Smoke Test Results
+          triggered_by: ${{ env.TEST_TRIGGERED_BY }}
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+      - name: cleanup
+        if: always()
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/cleanup@namespace_cleanup
+        with:
+          triggered_by: ${{ env.TEST_TRIGGERED_BY }}
 
   ### End Solana Section
