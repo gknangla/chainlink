@@ -260,7 +260,7 @@ func (cli *Client) runNode(c *clipkg.Context) error {
 		return nil
 	})
 
-	lggr.Debug("Environment variables\n", config.NewConfigPrinter(cli.Config))
+	cli.Config.LogConfiguration(lggr.Debug)
 
 	lggr.Infow(fmt.Sprintf("Chainlink booted in %.2fs", time.Since(static.InitTime).Seconds()), "appID", app.ID())
 
@@ -352,7 +352,7 @@ func (cli *Client) RebroadcastTransactions(c *clipkg.Context) (err error) {
 	beginningNonce := c.Uint("beginningNonce")
 	endingNonce := c.Uint("endingNonce")
 	gasPriceWei := c.Uint64("gasPriceWei")
-	overrideGasLimit := c.Uint64("gasLimit")
+	overrideGasLimit := c.Uint("gasLimit")
 	addressHex := c.String("address")
 	chainIDStr := c.String("evmChainID")
 
@@ -416,7 +416,7 @@ func (cli *Client) RebroadcastTransactions(c *clipkg.Context) (err error) {
 		return cli.errorOut(err)
 	}
 	ec := txmgr.NewEthConfirmer(app.GetSqlxDB(), ethClient, chain.Config(), keyStore.Eth(), keyStates, nil, nil, chain.Logger())
-	err = ec.ForceRebroadcast(beginningNonce, endingNonce, gasPriceWei, address, overrideGasLimit)
+	err = ec.ForceRebroadcast(beginningNonce, endingNonce, gasPriceWei, address, uint32(overrideGasLimit))
 	return cli.errorOut(err)
 }
 
@@ -648,7 +648,14 @@ func (cli *Client) CreateMigration(c *clipkg.Context) error {
 	return nil
 }
 
-func newConnection(cfg config.GeneralConfig, lggr logger.Logger) (*sqlx.DB, error) {
+type dbConfig interface {
+	DatabaseURL() url.URL
+	ORMMaxOpenConns() int
+	ORMMaxIdleConns() int
+	GetDatabaseDialectConfiguredOrDefault() dialects.DialectName
+}
+
+func newConnection(cfg dbConfig, lggr logger.Logger) (*sqlx.DB, error) {
 	parsed := cfg.DatabaseURL()
 	if parsed.String() == "" {
 		return nil, errors.New("You must set DATABASE_URL env variable. HINT: If you are running this to set up your local test database, try DATABASE_URL=postgresql://postgres@localhost:5432/chainlink_test?sslmode=disable")
@@ -700,7 +707,7 @@ func dropAndCreatePristineDB(db *sql.DB, template string) (err error) {
 	return nil
 }
 
-func migrateDB(config config.GeneralConfig, lggr logger.Logger) error {
+func migrateDB(config dbConfig, lggr logger.Logger) error {
 	db, err := newConnection(config, lggr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize orm: %v", err)
@@ -711,7 +718,7 @@ func migrateDB(config config.GeneralConfig, lggr logger.Logger) error {
 	return db.Close()
 }
 
-func downAndUpDB(cfg config.GeneralConfig, lggr logger.Logger, baseVersionID int64) error {
+func downAndUpDB(cfg dbConfig, lggr logger.Logger, baseVersionID int64) error {
 	db, err := newConnection(cfg, lggr)
 	if err != nil {
 		return fmt.Errorf("failed to initialize orm: %v", err)

@@ -39,6 +39,7 @@ import (
 	"gopkg.in/guregu/null.v4"
 
 	starkkey "github.com/smartcontractkit/chainlink-starknet/relayer/pkg/chainlink/keys"
+
 	"github.com/smartcontractkit/chainlink/core/assets"
 	"github.com/smartcontractkit/chainlink/core/auth"
 	"github.com/smartcontractkit/chainlink/core/bridges"
@@ -470,25 +471,7 @@ func NewEthMocksWithDefaultChain(t testing.TB) (c *evmMocks.Client) {
 }
 
 func NewEthMocks(t testing.TB) *evmMocks.Client {
-	c := new(evmMocks.Client)
-	c.Test(t)
-	switch tt := t.(type) {
-	case *testing.T:
-		t.Cleanup(func() {
-			c.AssertExpectations(tt)
-		})
-	}
-	return c
-}
-
-// Deprecated: use evmtest.NewEthClientMock
-func NewEthClientMock(t mock.TestingT) *evmMocks.Client {
-	return evmtest.NewEthClientMock(t)
-}
-
-// Deprecated: use evmtest.NewEthClientMockWithDefaultChain
-func NewEthClientMockWithDefaultChain(t testing.TB) *evmMocks.Client {
-	return evmtest.NewEthClientMockWithDefaultChain(t)
+	return evmMocks.NewClient(t)
 }
 
 func NewEthMocksWithStartupAssertions(t testing.TB) *evmMocks.Client {
@@ -501,10 +484,10 @@ func NewEthMocksWithStartupAssertions(t testing.TB) *evmMocks.Client {
 	c.On("ChainID").Maybe().Return(&FixtureChainID)
 	c.On("Close").Maybe().Return()
 
-	block := types.NewBlockWithHeader(&types.Header{
+	block := &types.Header{
 		Number: big.NewInt(100),
-	})
-	c.On("BlockByNumber", mock.Anything, mock.Anything).Maybe().Return(block, nil)
+	}
+	c.On("HeaderByNumber", mock.Anything, mock.Anything).Maybe().Return(block, nil)
 
 	return c
 }
@@ -535,10 +518,10 @@ func NewEthMocksWithTransactionsOnBlocksAssertions(t testing.TB) *evmMocks.Clien
 	c.On("ChainID").Maybe().Return(&FixtureChainID)
 	c.On("Close").Maybe().Return()
 
-	block := types.NewBlockWithHeader(&types.Header{
+	block := &types.Header{
 		Number: big.NewInt(100),
-	})
-	c.On("BlockByNumber", mock.Anything, mock.Anything).Maybe().Return(block, nil)
+	}
+	c.On("HeaderByNumber", mock.Anything, mock.Anything).Maybe().Return(block, nil)
 
 	return c
 }
@@ -903,10 +886,6 @@ const (
 	AssertNoActionTimeout = 3 * time.Second
 )
 
-// WaitTimeout is just preserved for compatibility. Use testutils.WaitTimeout directly instead.
-// Deprecated
-var WaitTimeout = testutils.WaitTimeout
-
 // WaitForSpecErrorV2 polls until the passed in jobID has count number
 // of job spec errors.
 func WaitForSpecErrorV2(t *testing.T, db *sqlx.DB, jobID int32, count int) []job.SpecError {
@@ -918,7 +897,7 @@ func WaitForSpecErrorV2(t *testing.T, db *sqlx.DB, jobID int32, count int) []job
 		err := db.Select(&jse, `SELECT * FROM job_spec_errors WHERE job_id = $1`, jobID)
 		assert.NoError(t, err)
 		return jse
-	}, WaitTimeout(t), DBPollingInterval).Should(gomega.HaveLen(count))
+	}, testutils.WaitTimeout(t), DBPollingInterval).Should(gomega.HaveLen(count))
 	return jse
 }
 
@@ -1278,25 +1257,16 @@ func MustBytesToConfigDigest(t *testing.T, b []byte) ocrtypes.ConfigDigest {
 
 // MockApplicationEthCalls mocks all calls made by the chainlink application as
 // standard when starting and stopping
-func MockApplicationEthCalls(t *testing.T, app *TestApplication, ethClient *evmMocks.Client) (verify func()) {
+func MockApplicationEthCalls(t *testing.T, app *TestApplication, ethClient *evmMocks.Client, sub *evmMocks.Subscription) {
 	t.Helper()
 
 	// Start
 	ethClient.On("Dial", mock.Anything).Return(nil)
-	sub := new(evmMocks.Subscription)
-	sub.On("Err").Return(nil)
 	ethClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(sub, nil).Maybe()
 	ethClient.On("ChainID", mock.Anything).Return(app.GetConfig().DefaultChainID(), nil)
 	ethClient.On("PendingNonceAt", mock.Anything, mock.Anything).Return(uint64(0), nil).Maybe()
 	ethClient.On("HeadByNumber", mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 	ethClient.On("Close").Return().Maybe()
-
-	// Stop
-	sub.On("Unsubscribe").Return(nil)
-
-	return func() {
-		ethClient.AssertExpectations(t)
-	}
 }
 
 func BatchElemMatchesParams(req rpc.BatchElem, arg interface{}, method string) bool {
@@ -1331,7 +1301,7 @@ func SimulateIncomingHeads(t *testing.T, args SimulateIncomingHeadsArgs) (done c
 
 	// Build the full chain of heads
 	heads := args.Blocks.Heads
-	ctx, cancel := context.WithTimeout(context.Background(), WaitTimeout(t))
+	ctx, cancel := context.WithTimeout(context.Background(), testutils.WaitTimeout(t))
 	t.Cleanup(cancel)
 	done = make(chan struct{})
 	go func(t *testing.T) {
@@ -1538,7 +1508,7 @@ func WaitForCount(t *testing.T, db *sqlx.DB, tableName string, want int64) {
 		err = db.Get(&count, fmt.Sprintf(`SELECT count(*) FROM %s;`, tableName))
 		assert.NoError(t, err)
 		return count
-	}, WaitTimeout(t), DBPollingInterval).Should(gomega.Equal(want))
+	}, testutils.WaitTimeout(t), DBPollingInterval).Should(gomega.Equal(want))
 }
 
 func AssertCountStays(t testing.TB, db *sqlx.DB, tableName string, want int64) {
@@ -1560,7 +1530,7 @@ func AssertRecordEventually(t *testing.T, db *sqlx.DB, model interface{}, stmt s
 		err := db.Get(model, stmt)
 		require.NoError(t, err, "unable to find record in DB")
 		return check()
-	}, WaitTimeout(t), DBPollingInterval).Should(gomega.BeTrue())
+	}, testutils.WaitTimeout(t), DBPollingInterval).Should(gomega.BeTrue())
 }
 
 func MustSendingKeyStates(t *testing.T, ethKeyStore keystore.Eth) []ethkey.State {
