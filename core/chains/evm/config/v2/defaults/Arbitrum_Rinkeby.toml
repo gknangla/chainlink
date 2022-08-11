@@ -5,11 +5,11 @@ OCR.ContractConfirmations = 1
 
 [GasEstimator]
 BumpThreshold = 0
-Mode = 'FixedPrice'
+Mode = 'L2Suggested'
 PriceDefault = '0.1 gwei'
-PriceMax = '0.1 gwei'
-PriceMin = '0.1 gwei'
-FeeCapDefault = '0.1 gwei'
+PriceMax = '1000 gwei'
+PriceMin = '0'
+FeeCapDefault = '1000 gwei'
 
 [GasEstimator.BlockHistory]
 BlockHistorySize = 0

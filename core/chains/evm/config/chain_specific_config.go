@@ -261,26 +261,17 @@ func setChainSpecificConfigDefaultSets() {
 	arbitrumMainnet.blockEmissionIdleWarningThreshold = 0
 	arbitrumMainnet.nodeDeadAfterNoNewHeadersThreshold = 0 // Arbitrum only emits blocks when a new tx is received, so this method of liveness detection is not useful
 	arbitrumMainnet.chainType = config.ChainArbitrum
-	arbitrumMainnet.gasBumpThreshold = 0 // Disable gas bumping on arbitrum
-	arbitrumMainnet.gasLimitDefault = 7000000
-	arbitrumMainnet.gasLimitTransfer = 800000            // estimating gas returns 695,344 so 800,000 should be safe with some buffer
-	arbitrumMainnet.gasPriceDefault = *assets.GWei(1000) // Arbitrum uses something like a Vickrey auction model where gas price represents a "max bid". In practice we usually pay much less
-	arbitrumMainnet.maxGasPriceWei = *assets.GWei(1000)  // Fix the gas price
-	arbitrumMainnet.minGasPriceWei = *assets.GWei(1000)  // Fix the gas price
-	arbitrumMainnet.gasEstimatorMode = "FixedPrice"
+	arbitrumMainnet.gasBumpThreshold = 0               // Disable gas bumping on arbitrum
+	arbitrumMainnet.gasPriceDefault = *assets.Wei(1e8) // 0.1 gwei
+	arbitrumMainnet.maxGasPriceWei = *assets.GWei(1000)
+	arbitrumMainnet.minGasPriceWei = *assets.GWei(0)
+	arbitrumMainnet.gasFeeCapDefault = *assets.GWei(1000)
+	arbitrumMainnet.gasEstimatorMode = "L2Suggested"
 	arbitrumMainnet.blockHistoryEstimatorBlockHistorySize = 0 // Force an error if someone set GAS_UPDATER_ENABLED=true by accident; we never want to run the block history estimator on arbitrum
 	arbitrumMainnet.linkContractAddress = "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4"
 	arbitrumMainnet.ocrContractConfirmations = 1
 	arbitrumRinkeby := arbitrumMainnet
 	arbitrumRinkeby.linkContractAddress = "0x615fBe6372676474d9e6933d310469c9b68e9726"
-	// nitro uses standard gas accounting, so restore default limits.
-	arbitrumRinkeby.gasLimitDefault = fallbackDefaultSet.gasLimitDefault
-	arbitrumRinkeby.gasLimitTransfer = fallbackDefaultSet.gasLimitTransfer
-	// nitro does not use an auction, so reduce the fixed gas price as it no longer represents an upper-bound bid.
-	arbitrumRinkeby.gasPriceDefault = *assets.Wei(1e8)  // 0.1 gwei
-	arbitrumRinkeby.maxGasPriceWei = *assets.Wei(1e8)   // 0.1 gwei
-	arbitrumRinkeby.minGasPriceWei = *assets.Wei(1e8)   // 0.1 gwei
-	arbitrumRinkeby.gasFeeCapDefault = *assets.Wei(1e8) // 0.1 gwei
 
 	// Optimism is an L2 chain. Pending proper L2 support, for now we rely on their sequencer
 	optimismMainnet := fallbackDefaultSet

@@ -11,12 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `hexencode` and `base64encode` tasks (pipeline).
 - `forwardingAllowed` per job attribute to allow forwarding txs submitted by the job.
+- Support for Arbitrum Nitro errors and gas estimation
 
 ### Changed
 
 - Keypath now supports paths with any depth, instead of limiting it to 2
 - `Arbitrum` chains are no longer restricted to only `FixedPrice` `GAS_ESTIMATOR_MODE`
-- Updated `Arbitrum Rinkeby` configuration for Nitro
+- Updated `Arbitrum` configurations for Nitro
 
 ## 1.7.0 - 2022-08-08
 
