@@ -55,11 +55,11 @@ require (
 	github.com/scylladb/go-reflectx v1.0.1
 	github.com/shirou/gopsutil/v3 v3.22.2
 	github.com/shopspring/decimal v1.3.1
-	github.com/smartcontractkit/chainlink-relay v0.1.2
+	github.com/smartcontractkit/chainlink-relay v0.1.6
 	github.com/smartcontractkit/chainlink-solana v0.2.20-0.20220620180429-9839e934712f
 	github.com/smartcontractkit/chainlink-starknet/relayer v0.0.0-20220725131406-68dfccf83e02
 	github.com/smartcontractkit/chainlink-terra v0.1.4-0.20220620174806-cd472d246b36
-	github.com/smartcontractkit/libocr v0.0.0-20220726132443-ef1f5a4b63d0
+	github.com/smartcontractkit/libocr v0.0.0-20220812191430-db92a9fdaa52
 	github.com/smartcontractkit/ocr2vrf v0.0.0-20220727192512-dbf98b080ec4
 	github.com/smartcontractkit/sqlx v1.3.5-0.20210805004948-4be295aacbeb
 	github.com/smartcontractkit/terra.go v1.0.3-0.20220108002221-62b39252ee16
@@ -81,7 +81,7 @@ require (
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/exp v0.0.0-20220608143224-64259d1afd70
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/text v0.3.7
 	golang.org/x/tools v0.1.10
